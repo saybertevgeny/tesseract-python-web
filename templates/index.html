@@ -1,0 +1,15 @@
+{% extends "layout.html" %}
+
+{% block content %}
+  
+    <p class="text-left">This is a demonstration of OCR using.</p>
+    <div class="upload-form">
+      <form action = "/uploader" method = "POST" 
+        enctype = "multipart/form-data">
+        <input type = "file" name = "file" accept=".jpg, .jpeg, .png" />
+        <input type = "submit"/>
+      </form>
+    </div>
+  
+
+{% endblock %}

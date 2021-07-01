@@ -1,0 +1,9 @@
+version: '3'
+
+services:
+  tesseract:
+    image: ocr-tesseract-docker:latest
+    container_name: tesseract
+    tty: true
+    volumes:
+      - ./data:/var/www/data
