@@ -10,6 +10,7 @@ from pdf2image import convert_from_path
 import tempfile
 import time
 from pathlib import Path
+import pika
 
 __author__ = 'Rick Torzynski <ricktorzynski@gmail.com>'
 __source__ = ''
@@ -18,7 +19,8 @@ app = Flask(__name__)
 UPLOAD_FOLDER = './static/uploads'
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024
-app.config['TMP_PATH'] = "C:/work/askd/ocr-tesseract-docker/tmp"
+#app.config['TMP_PATH'] = "C:/work/askd/ocr-tesseract-docker/tmp"
+app.config['TMP_PATH'] = "/tmp"
 
 
 def ocrImage(filepath):
@@ -36,7 +38,7 @@ def ocrImage(filepath):
     cv2.imwrite(filepath, gray)
 
     # perform OCR on the processed image
-    text = pytesseract.image_to_string(Image.open(filepath), lang="rus")
+    text = pytesseract.image_to_pdf_or_hocr(Image.open(filepath), lang="rus",extension='hocr')
 
     # remove the processed image
     os.remove(filepath)
@@ -45,7 +47,16 @@ def ocrImage(filepath):
 
 @app.route("/")
 def index():
-    return render_template("index.html")
+    # print(os.environ['HOME'])
+    rmq_parameters = pika.URLParameters("amqp://mqadmin:BrqTtAFs9@10.10.0.9:5672/")
+    rmq_connection = pika.BlockingConnection(rmq_parameters)
+    rmq_channel = rmq_connection.channel()
+    method_frame, header_frame, body = rmq_channel.basic_get('askd.tesseract.osg')
+    if method_frame:
+        print(method_frame, header_frame, body)
+        rmq_channel.basic_ack(method_frame.delivery_tag)
+    else:
+        print('No message returned')
 
 
 @app.route("/about")
@@ -72,12 +83,12 @@ def upload_file():
             pages = convert_from_path(pdf_full_path, 500, fmt="jpeg")
             index = 0
             for page in pages:
-                page_file_path = os.path.join(current_pid_directory, str(index), ".jpg")
+                page_file_path = os.path.join(current_pid_directory, str(index)+".jpg")
                 page.save(page_file_path)
                 text += ocrImage(page_file_path)
                 index += 1
-
-            os.remove(current_pid_directory)
+            os.remove(pdf_full_path)
+            os.rmdir(current_pid_directory)
         else:
             # save file to /static/uploads
             filepath = os.path.join(current_pid_directory, filename)

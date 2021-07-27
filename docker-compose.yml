@@ -7,3 +7,6 @@ services:
     tty: true
     volumes:
       - ./data:/var/www/data
+      - ./src:/app/src
+    ports:
+      - 5050:5000
